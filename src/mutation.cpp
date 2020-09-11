@@ -174,10 +174,10 @@ void Character::set_mutation( const trait_id &trait )
     const mutation_branch mut = trait.obj();
     cached_mutations.push_back( &mut );
     if( mut.has_reflex_triggers() ) {
-        my_reflex_mutations.emplace( trait, mut.get_reflex_triggers() );
+        my_reflex_mutations.emplace( trait, &mut.get_reflex_triggers() );
     }
     if( mut.has_clothing_triggers() ) {
-        my_clothing_mutations.emplace( trait, mut.get_clothing_triggers() );
+        my_clothing_mutations.emplace( trait, &mut.get_clothing_triggers() );
     }
     mutation_effect( trait, false );
     recalc_sight_limits();
@@ -230,7 +230,7 @@ bool Character::can_power_mutation( const trait_id &mut )
 
 void Character::check_mutation_clothing_triggers( std::map<bodypart_id, encumbrance_data> enc )
 {
-    for( const std::pair<trait_id, trigger_set<clothing_trigger_data>> mut : my_clothing_mutations ) {
+    for( const std::pair<trait_id, trigger_set<clothing_trigger_data>*> mut : my_clothing_mutations ) {
         check_mutation_trigger<clothing_trigger_data>( mut, enc );
     }
 
@@ -238,17 +238,23 @@ void Character::check_mutation_clothing_triggers( std::map<bodypart_id, encumbra
 
 void Character::check_mutation_reflex_triggers()
 {
-    for( const std::pair<trait_id, trigger_set<reflex_trigger_data>> mut : my_reflex_mutations ) {
+    for( const std::pair<trait_id, trigger_set<reflex_trigger_data>*> mut : my_reflex_mutations ) {
         check_mutation_trigger<reflex_trigger_data>( mut );
     }
 }
 
 template<typename T, typename U>
-void Character::check_mutation_trigger( const std::pair<trait_id, trigger_set<T>> mut,
+void Character::check_mutation_trigger( const std::pair<trait_id, trigger_set<T>*> mut,
                                         const U &data )
 {
+    if( !can_power_mutation( mut.first ) ) {
+        return;
+    }
 
-    if( mut.second.empty() || !can_power_mutation( mut.first ) ) {
+    const trait_id trait = mut.first;
+    const trigger_set<T> triggers = *mut.second;
+    if( triggers.empty() ) {
+        debugmsg( "%s does not have any triggers to check.", trait.str() );
         return;
     }
 
@@ -257,7 +263,7 @@ void Character::check_mutation_trigger( const std::pair<trait_id, trigger_set<T>
     std::pair<translation, game_message_type> msg_on;
     std::pair<translation, game_message_type> msg_off;
 
-    for( const std::vector<T> &vect_actdata : mut.second ) {
+    for( const std::vector<T> &vect_actdata : triggers ) {
         activate = false;
         // OR conditions: if any trigger is true then this condition is true
         for( const T &actdata : vect_actdata ) {
@@ -274,13 +280,13 @@ void Character::check_mutation_trigger( const std::pair<trait_id, trigger_set<T>
         }
     }
 
-    if( activate && !has_active_mutation( mut.first ) ) {
-        activate_mutation( mut.first );
+    if( activate && !has_active_mutation( trait ) ) {
+        activate_mutation( trait );
         if( !msg_on.first.empty() ) {
             add_msg_if_player( msg_on.second, msg_on.first );
         }
-    } else if( !activate && has_active_mutation( mut.first ) ) {
-        deactivate_mutation( mut.first );
+    } else if( !activate && has_active_mutation( trait ) ) {
+        deactivate_mutation( trait );
         if( !msg_off.first.empty() ) {
             add_msg_if_player( msg_off.second, msg_off.first );
         }

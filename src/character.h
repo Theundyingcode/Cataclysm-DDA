@@ -905,8 +905,9 @@ class Character : public Creature, public visitable<Character>
         void check_mutation_clothing_triggers( std::map<bodypart_id, encumbrance_data> enc );
 
         /**Check (and trigger) mutation trigger of given trait */
-        template<typename T, typename U = nullptr_t>
-        void check_mutation_trigger( const std::pair<trait_id, trigger_set<T>>, const U &data = nullptr );
+        template<typename T, typename U = cata::nullopt_t>
+        void check_mutation_trigger( const std::pair<trait_id, trigger_set<T>*>,
+                                     const U &data = cata::nullopt );
 
     public:
         // Trigger and disable mutations that can be so toggled.
@@ -2566,9 +2567,9 @@ class Character : public Creature, public visitable<Character>
          */
         std::vector<const mutation_branch *> cached_mutations{};
         /** Character's traits / mutations that have reflex triggers.*/
-        std::unordered_map<trait_id, trigger_set<reflex_trigger_data>> my_reflex_mutations{};
+        std::unordered_map<trait_id, trigger_set<reflex_trigger_data>*> my_reflex_mutations{};
         /** Character's traits / mutations that have clothing triggers.*/
-        std::unordered_map<trait_id, trigger_set<clothing_trigger_data>> my_clothing_mutations{};
+        std::unordered_map<trait_id, trigger_set<clothing_trigger_data>*> my_clothing_mutations{};
         /**
          * The amount of weight the Character is carrying.
          * If it is nullopt, needs to be recalculated
